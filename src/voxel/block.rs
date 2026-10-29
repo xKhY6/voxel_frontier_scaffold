@@ -7,6 +7,12 @@ pub enum BlockType {
     Grass,
     Dirt,
     Stone,
+    Brick,
+    Sand,
+    Snow,
+    Wood,
+    Leaves,
+    Planks,
 }
 
 impl BlockType {

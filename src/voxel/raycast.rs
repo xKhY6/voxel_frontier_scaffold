@@ -8,6 +8,8 @@ use super::world::World;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RayHit {
     pub block: IVec3,
+    /// Distance du rayon au point d'entrée dans le bloc.
+    pub distance: f32,
     /// Pointe vers l'origine du rayon : `block + normal` est la cellule libre devant la face.
     pub normal: IVec3,
 }
@@ -61,6 +63,7 @@ pub fn raycast(world: &World, origin: Vec3, direction: Vec3, max_distance: f32) 
             normal[axis] = -step[axis];
             return Some(RayHit {
                 block: cell,
+                distance: t_max[axis] - t_delta[axis],
                 normal,
             });
         }
@@ -113,6 +116,7 @@ mod tests {
             hit,
             Some(RayHit {
                 block: IVec3::new(0, 0, -3),
+                distance: 2.5,
                 normal: IVec3::new(0, 0, 1),
             })
         );
@@ -144,6 +148,7 @@ mod tests {
             hit,
             Some(RayHit {
                 block: IVec3::new(-1, 0, 0),
+                distance: 1.5,
                 normal: IVec3::new(-1, 0, 0),
             })
         );
@@ -164,6 +169,7 @@ mod tests {
             hit,
             Some(RayHit {
                 block: IVec3::new(0, 2, 0),
+                distance: 2.5,
                 normal: IVec3::new(0, 1, 0),
             })
         );

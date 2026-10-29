@@ -1,5 +1,50 @@
 ## Unreleased
 
+- Combat à distance : pistolet, fusil et fusil à pompe avec statistiques et munitions finies ; sélection Q/1-3, rechargement R, tirs au viseur bloqués par les blocs et compteur de munitions au HUD.
+- Sauvegardes version 10 : arme active et munitions persistées ; migrations compatibles depuis les sauvegardes v1-v9.
+- Ciblage des tirs par raycast contre les volumes des ennemis ; dégâts d'arme différenciés et mort possible en un coup de fusil à pompe.
+- Boucle de survie amorcée : miner récolte le bloc, construire dépense l'inventaire ; ajout du bloc brique et d'une recette accessible avec C.
+- Recette de briques externalisée dans `assets/recipes.json`, avec validation des ingrédients, piles de sortie, données invalides et recettes inconnues.
+- Génération déterministe de plaines, déserts et toundras ; sable et neige intégrés au maillage, à l'inventaire et à la hotbar.
+- Sauvegardes version 4 : six matériaux et ennemis vaincus ; migrations v1-v3.
+- Sauvegardes version 5 : position et santé du joueur persistées, migrations v1-v4.
+- Sauvegardes version 6 : piles de bois et de feuilles persistées ; migrations des inventaires v1-v5.
+- Ajout de planches craftables depuis le bois, sélectionnables/posables et persistées en sauvegarde v7 ; migration v1-v6.
+- Sauvegardes version 8 : phase du cycle jour/nuit persistée ; migration depuis les sauvegardes v1-v7.
+- Sauvegardes version 9 : orientation yaw/pitch persistée et validée ; migration depuis les sauvegardes v1-v8.
+- Combat : cadence d'attaque joueur de 0,3 s et protection après dégâts pour éviter les frappes répétées abusives et le cumul des dégâts ennemis simultanés.
+- Sauvegardes : le résultat des commandes F5/F9 est maintenant visible dans la barre de titre, y compris les erreurs.
+- HUD : ajout d'une barre rapide visuelle pour les neuf matériaux, avec surbrillance du bloc actif et indicateurs de stock.
+- Fin de partie : écran de victoire après élimination des ennemis et redémarrage complet par R.
+- Menu principal : écran de démarrage avec nouvelle partie, reprise conditionnelle de sauvegarde et sortie clavier.
+- Interfaces adaptatives de pause et de fabrication ; la fabrication affiche les ingrédients, distingue les recettes réalisables et suspend la simulation.
+- Menu d'options accessible depuis la pause : sensibilité souris sur cinq niveaux, persistée et validée dans `voxel_frontier_settings.json`.
+- Réglage de la distance d'affichage sur trois niveaux depuis les options ; le streaming s'adapte immédiatement et la valeur est persistée.
+- Les maillages des faces affectées par une variation de lumière solaire sont désormais recalculés après les éditions et les changements de chunks.
+- Le pathfinding conserve le terrain autour des ennemis vivants et traverse les frontières des chunks chargés.
+- Normales transmises au shader ; l'éclairage directionnel des faces suit la course du soleil et s'adapte aux transformations des entités.
+- Effets sonores synthétisés pour la récolte, la pose, le craft, les coups, les dégâts et la victoire ; le jeu reste utilisable sans sortie audio.
+- Deuxième recette intégrée aux données : V fabrique quatre planches avec une bûche.
+- HUD OpenGL minimal : viseur, jauge de santé et marqueurs des ennemis restants.
+- Ennemis capables de contourner les obstacles au sol par une recherche de chemin bornée et périodiquement recalculée.
+- Ennemis capables de franchir une marche d'un bloc, avec vérification de l'espace libre et test de poursuite sur terrain montant.
+- L'IA s'arrête sans itinéraire trouvé au lieu de foncer à travers les obstacles ; couverture par un test de mur infranchissable.
+- Arbres déterministes en plaine, avec troncs et feuillage récoltables générés de façon cohérente aux frontières de chunks.
+- Bois et feuilles récoltables, stockés dans l'inventaire et sélectionnables avec 7 et 8.
+- Éclairage solaire flood-fill limité aux chunks chargés, recalculé après édition et appliqué aux couleurs des faces.
+- Cycle jour/nuit de quatre minutes affectant l'ambiance des blocs et la couleur du ciel via le shader.
+- Pause/reprise avec P, libération de la souris, suspension de la simulation et indicateur central ; Échap quitte depuis la pause.
+- Ennemis voxel affichés, états repos/poursuite/attaque/mort, attaques au contact et combat de mêlée avec F.
+- Ennemis soumis à la gravité et aux collisions du terrain ; combat et ciblage de mêlée limités par la hauteur.
+- Chargement à la demande des chunks autour du joueur ; victoire et récompense de terre après avoir vaincu tous les ennemis.
+- Zone de streaming initiale générée avant le premier maillage afin d'éviter une première image partiellement chargée.
+- Éviction des chunks hors rayon avec cache disque ; restauration lors du retour et fusion du cache aux sauvegardes F5/F9.
+- Inventaire limité à 999 unités par matériau, quantités et recette affichées dans la barre de titre.
+- Sauvegardes version 2 : inventaire persisté, migration des sauvegardes v1 vers un inventaire vide, validation des données chargées.
+- Parcours jouable complété : capture de souris au premier clic, libération avec Échap et commandes rappelées dans la barre de titre.
+- Hotbar créative : touches 1 à 3 pour choisir herbe, terre ou pierre à poser.
+- Retour déterministe au point de départ si le joueur tombe hors du terrain ; perte de focus efface aussi le mouvement de souris en attente.
+- Étape 11 de la feuille de route clôturée ; limites du MVP et commandes de jeu documentées.
 - Fenêtre winit 0.30 (`ApplicationHandler`) avec fermeture par la croix ou Échap.
 - Boucle à pas fixe (60 Hz environ) avec rattrapage borné ; tests unitaires de l'horloge.
 - Entrées : état clavier et souris (`input/`), alimenté par la fenêtre, avec tests unitaires.

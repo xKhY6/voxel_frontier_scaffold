@@ -1,4 +1,6 @@
 target/
 voxel_frontier_save.json
 voxel_frontier_save.tmp
+voxel_frontier_settings.json
 .vscode/
+.gitignore

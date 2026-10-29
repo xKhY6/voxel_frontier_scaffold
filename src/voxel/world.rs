@@ -33,8 +33,17 @@ impl World {
         self.chunks.insert(coord, chunk);
     }
 
+    /// Retire et retourne un chunk chargé.
+    pub fn remove_chunk(&mut self, coord: ChunkCoord) -> Option<Chunk> {
+        self.chunks.remove(&coord)
+    }
+
     pub fn chunk(&self, coord: ChunkCoord) -> Option<&Chunk> {
         self.chunks.get(&coord)
+    }
+
+    pub fn is_loaded_block(&self, block: IVec3) -> bool {
+        self.chunks.contains_key(&split_block_pos(block).0)
     }
 
     /// Bloc à une position monde. `Air` si le chunk n'est pas chargé.
@@ -117,6 +126,18 @@ mod tests {
         let world = World::new();
 
         assert_eq!(world.block_at(IVec3::new(5, 5, 5)), BlockType::Air);
+    }
+
+    #[test]
+    fn un_chunk_retire_est_retourne_et_devient_absent() {
+        let coord = IVec3::new(-2, 1, 3);
+        let mut world = World::new();
+        let chunk = Chunk::filled(BlockType::Brick);
+        world.insert_chunk(coord, chunk.clone());
+
+        assert_eq!(world.remove_chunk(coord), Some(chunk));
+        assert!(world.chunk(coord).is_none());
+        assert_eq!(world.block_at(IVec3::new(-32, 16, 48)), BlockType::Air);
     }
 
     #[test]

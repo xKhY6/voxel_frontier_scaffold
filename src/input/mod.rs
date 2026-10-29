@@ -53,6 +53,7 @@ impl InputState {
     pub fn clear(&mut self) {
         self.keys_down.clear();
         self.buttons_down.clear();
+        self.mouse_delta = (0.0, 0.0);
     }
 }
 
@@ -110,10 +111,12 @@ mod tests {
         let mut input = InputState::default();
         input.set_key(KeyCode::Space, ElementState::Pressed);
         input.set_mouse_button(MouseButton::Right, ElementState::Pressed);
+        input.add_mouse_motion(4.0, 2.0);
 
         input.clear();
 
         assert!(!input.is_key_down(KeyCode::Space));
         assert!(!input.is_mouse_button_down(MouseButton::Right));
+        assert_eq!(input.take_mouse_delta(), (0.0, 0.0));
     }
 }

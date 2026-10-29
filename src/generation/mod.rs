@@ -18,11 +18,22 @@ const HEIGHT_AMPLITUDE: f32 = 16.0;
 /// Taille d'une cellule du bruit de base, en blocs.
 const FEATURE_SIZE: f32 = 16.0;
 
+/// Taille caractéristique des zones de biome, en blocs.
+const BIOME_SIZE: f32 = 48.0;
+
 /// Épaisseur de la couche de terre sous l'herbe, en blocs.
 const DIRT_DEPTH: i32 = 3;
 
-/// Nombre de couches verticales de chunks dans une zone. 2 chunks = 32 blocs, au-dessus du relief maximal (< 24).
-const AREA_LAYERS: i32 = 2;
+/// Trois chunks verticaux couvrent le relief et les cimes des arbres.
+const AREA_LAYERS: i32 = 3;
+const TREE_DENSITY: f32 = 0.015;
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+enum Biome {
+    Plains,
+    Desert,
+    Tundra,
+}
 
 /// Génère le chunk `coord` à partir de la graine. Même graine et même coordonnée donnent le même chunk.
 pub fn generate_chunk(seed: u64, coord: IVec3) -> Chunk {
@@ -32,14 +43,74 @@ pub fn generate_chunk(seed: u64, coord: IVec3) -> Chunk {
 
     for x in 0..size {
         for z in 0..size {
-            let surface = surface_height(seed, origin.x + x, origin.z + z);
+            let world_x = origin.x + x;
+            let world_z = origin.z + z;
+            let biome = biome_at(seed, world_x, world_z);
+            let surface = surface_height(seed, world_x, world_z);
             for y in 0..size {
-                let block = block_for_depth(origin.y + y, surface);
+                let block = block_for_depth(origin.y + y, surface, biome);
                 chunk.set(IVec3::new(x, y, z), block);
             }
         }
     }
+    place_vegetation(seed, origin, &mut chunk);
     chunk
+}
+
+fn place_vegetation(seed: u64, origin: IVec3, chunk: &mut Chunk) {
+    let size = CHUNK_SIZE as i32;
+    let x_range = origin.x - 2..origin.x + size + 2;
+    let z_range = origin.z - 2..origin.z + size + 2;
+
+    for x in x_range.clone() {
+        for z in z_range.clone() {
+            if !is_tree_candidate(seed, x, z) {
+                continue;
+            }
+            let surface = surface_height(seed, x, z);
+            for layer in 0..3 {
+                let y = surface + 3 + layer;
+                let radius: i32 = if layer == 2 { 1 } else { 2 };
+                for dx in -radius..=radius {
+                    for dz in -radius..=radius {
+                        if dx.abs() == radius && dz.abs() == radius {
+                            continue;
+                        }
+                        set_chunk_block_if_air(
+                            chunk,
+                            origin,
+                            IVec3::new(x + dx, y, z + dz),
+                            BlockType::Leaves,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    for x in x_range {
+        for z in z_range.clone() {
+            if !is_tree_candidate(seed, x, z) {
+                continue;
+            }
+            let surface = surface_height(seed, x, z);
+            for y in surface + 1..=surface + 4 {
+                set_chunk_block_if_air(chunk, origin, IVec3::new(x, y, z), BlockType::Wood);
+            }
+        }
+    }
+}
+
+fn set_chunk_block_if_air(chunk: &mut Chunk, origin: IVec3, world_pos: IVec3, block: BlockType) {
+    let local = world_pos - origin;
+    if chunk.get(local) == Some(BlockType::Air) {
+        chunk.set(local, block);
+    }
+}
+
+fn is_tree_candidate(seed: u64, x: i32, z: i32) -> bool {
+    biome_at(seed, x, z) == Biome::Plains
+        && lattice_value(seed ^ 0xA076_1D64_78BD_642F, x as i64, z as i64) < TREE_DENSITY
 }
 
 /// Génère une zone de chunks : colonnes de `-radius..radius` sur x et z, `AREA_LAYERS` couches en y à partir de 0.
@@ -62,16 +133,42 @@ pub fn surface_height(seed: u64, x: i32, z: i32) -> i32 {
     let fz = z as f32 / FEATURE_SIZE;
     // Deux octaves : une forme large (3/4) et des détails plus fins (1/4).
     let noise = 0.75 * value_noise(seed, fx, fz) + 0.25 * value_noise(seed, fx * 4.0, fz * 4.0);
-    (BASE_HEIGHT + noise * HEIGHT_AMPLITUDE) as i32
+    let (base, amplitude) = match biome_at(seed, x, z) {
+        Biome::Plains => (BASE_HEIGHT, HEIGHT_AMPLITUDE),
+        Biome::Desert => (5.0, 5.0),
+        Biome::Tundra => (18.0, 11.0),
+    };
+    (base + noise * amplitude) as i32
+}
+
+fn biome_at(seed: u64, x: i32, z: i32) -> Biome {
+    let value = value_noise(
+        seed ^ 0xD6E8_FEB8_6659_FD93,
+        x as f32 / BIOME_SIZE,
+        z as f32 / BIOME_SIZE,
+    );
+    if value < 0.32 {
+        Biome::Desert
+    } else if value > 0.72 {
+        Biome::Tundra
+    } else {
+        Biome::Plains
+    }
 }
 
 /// Bloc attendu à la hauteur monde `y` d'une colonne dont la surface est `surface`.
-/// Surface : herbe ; sous elle, terre puis pierre ; au-dessus, air.
-fn block_for_depth(y: i32, surface: i32) -> BlockType {
+/// Le matériau de surface et sa couche dépendent du biome.
+fn block_for_depth(y: i32, surface: i32, biome: Biome) -> BlockType {
     if y > surface {
         BlockType::Air
     } else if y == surface {
-        BlockType::Grass
+        match biome {
+            Biome::Plains => BlockType::Grass,
+            Biome::Desert => BlockType::Sand,
+            Biome::Tundra => BlockType::Snow,
+        }
+    } else if biome == Biome::Desert && y >= surface - 3 {
+        BlockType::Sand
     } else if y >= surface - DIRT_DEPTH {
         BlockType::Dirt
     } else {
@@ -142,7 +239,7 @@ mod tests {
             for z in -200..200 {
                 let h = surface_height(SEED, x, z);
                 assert!(
-                    (BASE_HEIGHT as i32..(BASE_HEIGHT + HEIGHT_AMPLITUDE) as i32).contains(&h),
+                    (5..30).contains(&h),
                     "surface hors bornes en ({x}, {z}) : {h}"
                 );
             }
@@ -150,18 +247,32 @@ mod tests {
     }
 
     #[test]
-    fn la_surface_est_herbe_puis_terre_puis_pierre() {
+    fn les_couches_de_terrain_dependant_du_biome() {
         let surface = 10;
 
-        assert_eq!(block_for_depth(surface + 1, surface), BlockType::Air);
-        assert_eq!(block_for_depth(surface, surface), BlockType::Grass);
         assert_eq!(
-            block_for_depth(surface - DIRT_DEPTH, surface),
+            block_for_depth(surface + 1, surface, Biome::Plains),
+            BlockType::Air
+        );
+        assert_eq!(
+            block_for_depth(surface, surface, Biome::Plains),
+            BlockType::Grass
+        );
+        assert_eq!(
+            block_for_depth(surface - DIRT_DEPTH, surface, Biome::Plains),
             BlockType::Dirt
         );
         assert_eq!(
-            block_for_depth(surface - DIRT_DEPTH - 1, surface),
+            block_for_depth(surface - DIRT_DEPTH - 1, surface, Biome::Plains),
             BlockType::Stone
+        );
+        assert_eq!(
+            block_for_depth(surface - 2, surface, Biome::Desert),
+            BlockType::Sand
+        );
+        assert_eq!(
+            block_for_depth(surface, surface, Biome::Tundra),
+            BlockType::Snow
         );
     }
 
@@ -185,15 +296,70 @@ mod tests {
                 let h = surface_height(SEED, x, z);
                 assert_eq!(
                     world.block_at(IVec3::new(x, h, z)),
-                    BlockType::Grass,
+                    block_for_depth(h, h, biome_at(SEED, x, z)),
                     "x={x} z={z}"
                 );
-                assert_eq!(
-                    world.block_at(IVec3::new(x, h + 1, z)),
-                    BlockType::Air,
+                assert!(
+                    matches!(
+                        world.block_at(IVec3::new(x, h + 1, z)),
+                        BlockType::Air | BlockType::Wood | BlockType::Leaves
+                    ),
                     "x={x} z={z}"
                 );
             }
         }
+    }
+
+    #[test]
+    fn les_arbres_sont_deterministes_et_traversent_les_frontieres() {
+        let candidate = (-2048_i32..2048)
+            .filter(|x| x.rem_euclid(CHUNK_SIZE as i32) == CHUNK_SIZE as i32 - 1)
+            .find_map(|x| {
+                (-64..64).find_map(|z| {
+                    if !is_tree_candidate(SEED, x, z) || is_tree_candidate(SEED, x + 1, z) {
+                        return None;
+                    }
+                    let surface = surface_height(SEED, x, z);
+                    let trunk_layer = (surface + 1).div_euclid(CHUNK_SIZE as i32);
+                    let leaves_layer = (surface + 3).div_euclid(CHUNK_SIZE as i32);
+                    (trunk_layer == leaves_layer).then_some((x, z, surface))
+                })
+            })
+            .expect("un arbre doit se trouver près d'une frontière de chunk");
+        let (x, z, surface) = candidate;
+        let size = CHUNK_SIZE as i32;
+        let trunk_coord = IVec3::new(
+            x.div_euclid(size),
+            (surface + 1).div_euclid(size),
+            z.div_euclid(size),
+        );
+        let leaves_coord = IVec3::new(
+            (x + 1).div_euclid(size),
+            (surface + 3).div_euclid(size),
+            z.div_euclid(size),
+        );
+        let trunk = generate_chunk(SEED, trunk_coord);
+        let leaves = generate_chunk(SEED, leaves_coord);
+
+        assert_eq!(
+            trunk.get(IVec3::new(x, surface + 1, z) - trunk_coord * size),
+            Some(BlockType::Wood)
+        );
+        assert_eq!(
+            leaves.get(IVec3::new(x + 1, surface + 3, z) - leaves_coord * size),
+            Some(BlockType::Leaves)
+        );
+        assert_eq!(trunk, generate_chunk(SEED, trunk_coord));
+        assert_eq!(leaves, generate_chunk(SEED, leaves_coord));
+    }
+
+    #[test]
+    fn les_trois_biomes_sont_generes() {
+        let biomes: std::collections::HashSet<_> = (-256..256)
+            .step_by(4)
+            .flat_map(|x| (-256..256).step_by(4).map(move |z| biome_at(SEED, x, z)))
+            .collect();
+
+        assert_eq!(biomes.len(), 3);
     }
 }

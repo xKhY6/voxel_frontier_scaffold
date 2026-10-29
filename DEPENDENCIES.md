@@ -12,9 +12,10 @@ Principe : minimum de crates. Une crate n'est ajoutée que si un développement 
 | glutin | 0.32.3 | Contexte OpenGL et surface de rendu | La création de contexte dépend de la plateforme (WGL, EGL, GLX) ; la réimplémenter serait déraisonnable | dependencies |
 | glutin-winit | 0.5.0 | Liaison entre glutin et winit | Évite de coder soi-même la configuration GL par fenêtre | dependencies |
 | raw-window-handle | 0.6.2 | Handle de fenêtre partagé entre winit et glutin | Version imposée par winit et glutin ; aucun code propre | dependencies |
+| rodio | 0.23.0 (`playback` uniquement) | Effets audio générés à la volée | Gestion des périphériques et mixage audio via cpal ; une implémentation audio système maison serait risquée et spécifique à l'OS | dependencies |
 | serde | 1.0.229 | Sérialisation (feature `derive`) | La génération de code par derive est complexe à reproduire | dependencies |
 | serde_json | 1.0.154 | Format JSON de sauvegarde | Format lisible et robuste ; à réévaluer, un format binaire maison peut suffire | dependencies |
 
 Backend graphique : OpenGL 3.3 core via glow et glutin (voir [DECISIONS.md](DECISIONS.md)). `wgpu` a été écarté.
 
-`serde` et `serde_json` sont utilisés par `save/` et par les dérives de `BlockType`. `tempfile` n'est pas retenu : les tests de sauvegarde utilisent le dossier temporaire du système.
+`serde` et `serde_json` sont utilisés par `save/`, les options locales et les dérives de `BlockType`. `rodio` est limité à la lecture audio : les codecs et fonctions d'enregistrement sont désactivés. `tempfile` n'est pas retenu : les tests de sauvegarde utilisent le dossier temporaire du système.

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "stone_bricks",
+    "ingredients": [
+      { "block": "Stone", "amount": 2 },
+      { "block": "Dirt", "amount": 2 }
+    ],
+    "output": { "block": "Brick", "amount": 4 }
+  },
+  {
+    "id": "wood_planks",
+    "ingredients": [
+      { "block": "Wood", "amount": 1 }
+    ],
+    "output": { "block": "Planks", "amount": 4 }
+  }
+]

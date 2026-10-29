@@ -5,6 +5,7 @@ use glam::{IVec3, Vec3};
 use super::block::BlockType;
 use super::chunk::CHUNK_SIZE;
 use super::world::{ChunkCoord, World};
+use crate::lighting::VoxelLighting;
 
 /// Sommet : position monde puis couleur RVB. `repr(C)` : disposition attendue par le GPU.
 #[repr(C)]
@@ -12,6 +13,7 @@ use super::world::{ChunkCoord, World};
 pub struct Vertex {
     pub position: [f32; 3],
     pub color: [f32; 3],
+    pub normal: [f32; 3],
 }
 
 /// Sommets et triangles d'un chunk. Vide si le chunk n'est pas chargé ou n'a aucune face exposée.
@@ -105,11 +107,27 @@ fn block_color(block: BlockType) -> Option<[f32; 3]> {
         BlockType::Grass => Some([0.35, 0.7, 0.25]),
         BlockType::Dirt => Some([0.45, 0.3, 0.15]),
         BlockType::Stone => Some([0.5, 0.5, 0.52]),
+        BlockType::Brick => Some([0.65, 0.25, 0.18]),
+        BlockType::Sand => Some([0.82, 0.74, 0.48]),
+        BlockType::Snow => Some([0.88, 0.92, 0.98]),
+        BlockType::Wood => Some([0.42, 0.25, 0.1]),
+        BlockType::Leaves => Some([0.18, 0.48, 0.16]),
+        BlockType::Planks => Some([0.68, 0.48, 0.25]),
     }
 }
 
 /// Maillage du chunk `coord`. Une face n'est émise que si le voisin n'est pas solide ; un voisin hors chunk chargé compte comme air.
+#[cfg(test)]
 pub fn build_chunk_mesh(world: &World, coord: ChunkCoord) -> MeshData {
+    build_chunk_mesh_with_lighting(world, coord, &VoxelLighting::calculate(world))
+}
+
+/// Construit le maillage en appliquant la lumière précalculée aux faces exposées.
+pub fn build_chunk_mesh_with_lighting(
+    world: &World,
+    coord: ChunkCoord,
+    lighting: &VoxelLighting,
+) -> MeshData {
     let mut mesh = MeshData::default();
     let Some(chunk) = world.chunk(coord) else {
         return mesh;
@@ -130,10 +148,20 @@ pub fn build_chunk_mesh(world: &World, coord: ChunkCoord) -> MeshData {
                     if world.block_at(neighbor).is_solid() {
                         continue;
                     }
-                    push_face(&mut mesh, pos, face, color);
+                    let light = lighting.factor_at(neighbor);
+                    push_face(&mut mesh, pos, face, color.map(|channel| channel * light));
                 }
             }
         }
+    }
+    mesh
+}
+
+/// Maillage d'un cube unitaire coloré, utilisé pour les entités mobiles.
+pub fn build_entity_cube_mesh(color: [f32; 3]) -> MeshData {
+    let mut mesh = MeshData::default();
+    for face in &FACES {
+        push_face(&mut mesh, IVec3::ZERO, face, color);
     }
     mesh
 }
@@ -147,6 +175,7 @@ fn push_face(mesh: &mut MeshData, pos: IVec3, face: &Face, color: [f32; 3]) {
         mesh.vertices.push(Vertex {
             position: (origin + Vec3::from_array(corner)).to_array(),
             color: shaded,
+            normal: face.normal.map(|component| component as f32),
         });
     }
     mesh.indices
@@ -196,6 +225,26 @@ mod tests {
 
         assert_eq!(mesh.indices.len(), 36);
         assert_eq!(mesh.vertices.len(), 24);
+    }
+
+    #[test]
+    fn les_sommets_portent_une_normale_unitaire_par_face() {
+        let mut chunk = Chunk::filled(BlockType::Air);
+        chunk.set(IVec3::new(5, 5, 5), BlockType::Stone);
+        let mut world = World::new();
+        world.insert_chunk(IVec3::ZERO, chunk);
+        let mesh = build_chunk_mesh(&world, IVec3::ZERO);
+
+        assert!(mesh.vertices.iter().all(|vertex| {
+            let normal = Vec3::from_array(vertex.normal);
+            (normal.length() - 1.0).abs() < 1e-6
+                && vertex
+                    .normal
+                    .iter()
+                    .filter(|component| **component != 0.0)
+                    .count()
+                    == 1
+        }));
     }
 
     #[test]

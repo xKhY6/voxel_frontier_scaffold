@@ -17,6 +17,13 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub fn is_valid_rotation(yaw: f32, pitch: f32) -> bool {
+        yaw.is_finite()
+            && (0.0..TAU).contains(&yaw)
+            && pitch.is_finite()
+            && (-PITCH_LIMIT..=PITCH_LIMIT).contains(&pitch)
+    }
+
     /// Tourne la caméra de `dyaw` et `dpitch`. Le pitch est borné ; le yaw reste dans un tour.
     pub fn rotate(&mut self, dyaw: f32, dpitch: f32) {
         self.yaw = (self.yaw + dyaw).rem_euclid(TAU);
@@ -84,6 +91,15 @@ mod tests {
         camera.rotate(TAU + 0.1, 0.0);
 
         assert!((camera.yaw - 0.1).abs() < EPSILON);
+    }
+
+    #[test]
+    fn les_rotations_persistables_sont_finies_et_dans_les_bornes() {
+        assert!(Camera::is_valid_rotation(0.0, 0.0));
+        assert!(Camera::is_valid_rotation(TAU - EPSILON, PITCH_LIMIT));
+        assert!(!Camera::is_valid_rotation(TAU, 0.0));
+        assert!(!Camera::is_valid_rotation(0.0, PITCH_LIMIT + EPSILON));
+        assert!(!Camera::is_valid_rotation(f32::NAN, 0.0));
     }
 
     #[test]

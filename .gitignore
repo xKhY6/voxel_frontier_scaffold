@@ -1,0 +1,4 @@
+target/
+voxel_frontier_save.json
+voxel_frontier_save.tmp
+.vscode/
